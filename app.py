@@ -24,6 +24,7 @@ from utils.plotting import (
     plot_human_dynamics, plot_intervention_comparison,
     plot_r0_gauge, plot_sensitivity, plot_observed_overlay,
 )
+from utils.rainfall_api import fetch_nasa_power, OUTBREAK_PRESETS
 
 # ── Page config ────────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -43,27 +44,91 @@ st.caption(
 with st.sidebar:
     # ── Rainfall ──────────────────────────────────────────────────────────────
     st.header("📁 Rainfall Input")
+    rain_source = st.radio(
+        "Rainfall source",
+        ["Upload CSV", "NASA POWER API"],
+        horizontal=True,
+        help="Upload your own data or fetch real satellite-based precipitation from NASA POWER.",
+    )
+
     sample_path = ROOT / "data" / "sample_rainfall.csv"
-    if sample_path.exists():
-        with open(sample_path, "rb") as f:
-            st.download_button("⬇ Download sample CSV", f,
-                               "sample_rainfall.csv", "text/csv")
-    st.markdown("""
-**Format:** `day,rainfall_mm` (two columns) or single column `rainfall_mm`.
-    """)
-    uploaded = st.file_uploader("Upload rainfall CSV", type=["csv"])
     rain_array: "np.ndarray | None" = None
-    if uploaded is not None:
-        try:
-            df_rain = pd.read_csv(uploaded)
-            col = "rainfall_mm" if "rainfall_mm" in df_rain.columns else df_rain.columns[-1]
-            rain_array = df_rain[col].to_numpy(dtype=float)
-            st.success(f"Loaded {len(rain_array)} days.")
-        except Exception as e:
-            st.error(f"Parse error: {e}")
-    if rain_array is None and sample_path.exists():
-        rain_array = pd.read_csv(sample_path)["rainfall_mm"].to_numpy(dtype=float)
-        st.info("Using sample rainfall (365 days).")
+
+    if rain_source == "Upload CSV":
+        if sample_path.exists():
+            with open(sample_path, "rb") as f:
+                st.download_button("⬇ Download sample CSV", f,
+                                   "sample_rainfall.csv", "text/csv")
+        st.markdown("**Format:** `day,rainfall_mm` (two columns) or single column `rainfall_mm`.")
+        uploaded = st.file_uploader("Upload rainfall CSV", type=["csv"])
+        if uploaded is not None:
+            try:
+                df_rain = pd.read_csv(uploaded)
+                col = "rainfall_mm" if "rainfall_mm" in df_rain.columns else df_rain.columns[-1]
+                rain_array = df_rain[col].to_numpy(dtype=float)
+                st.success(f"Loaded {len(rain_array)} days.")
+            except Exception as e:
+                st.error(f"Parse error: {e}")
+        if rain_array is None and sample_path.exists():
+            rain_array = pd.read_csv(sample_path)["rainfall_mm"].to_numpy(dtype=float)
+            st.info("Using sample rainfall (365 days).")
+
+    else:  # NASA POWER API
+        preset_names = list(OUTBREAK_PRESETS.keys())
+        chosen_preset = st.selectbox("Known outbreak location", preset_names)
+        preset = OUTBREAK_PRESETS[chosen_preset]
+
+        api_lat   = st.number_input("Latitude",  -90.0,  90.0, float(preset["lat"]), 0.001, format="%.3f")
+        api_lon   = st.number_input("Longitude", -180.0, 180.0, float(preset["lon"]), 0.001, format="%.3f")
+        api_start = st.date_input("Start date", value=preset["start"])
+        api_end   = st.date_input("End date",   value=preset["end"])
+
+        if preset.get("note"):
+            st.caption(f"📌 {preset['note']}")
+
+        fetch_btn = st.button("🌐 Fetch Rainfall Data", use_container_width=True)
+
+        if "api_rain" not in st.session_state:
+            st.session_state.api_rain  = None
+            st.session_state.api_meta  = None
+
+        if fetch_btn:
+            if api_end < api_start:
+                st.error("End date must be after start date.")
+            else:
+                with st.spinner("Fetching from NASA POWER…"):
+                    try:
+                        arr, meta = fetch_nasa_power(api_lat, api_lon, api_start, api_end)
+                        st.session_state.api_rain = arr
+                        st.session_state.api_meta = meta
+                        st.success(
+                            f"Fetched {meta['n_days']} days · "
+                            f"Total {meta['total_mm']:.1f} mm · "
+                            f"Peak {meta['peak_mm']:.1f} mm (day {meta['peak_day']})"
+                        )
+                    except Exception as e:
+                        st.error(f"API fetch failed: {e}")
+
+        if st.session_state.api_rain is not None:
+            rain_array = st.session_state.api_rain
+            meta = st.session_state.api_meta
+            # Quick sparkline preview
+            import plotly.graph_objects as _go
+            _fig = _go.Figure()
+            _fig.add_bar(
+                x=list(range(1, len(rain_array) + 1)),
+                y=rain_array.tolist(),
+                marker_color="#4C9BE8",
+                name="mm/day",
+            )
+            _fig.update_layout(
+                height=160, margin=dict(l=0, r=0, t=24, b=0),
+                title_text=f"NASA POWER · {meta['location']}  ({meta['start']} → {meta['end']})",
+                title_font_size=11,
+                xaxis_title="Day", yaxis_title="mm",
+                showlegend=False,
+            )
+            st.plotly_chart(_fig, use_container_width=True, config={"displayModeBar": False})
 
     st.divider()
 
