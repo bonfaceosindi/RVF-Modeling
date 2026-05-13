@@ -24,7 +24,7 @@ from utils.plotting import (
     plot_human_dynamics, plot_intervention_comparison,
     plot_r0_gauge, plot_sensitivity, plot_observed_overlay,
 )
-from utils.rainfall_api import fetch_nasa_power, OUTBREAK_HIERARCHY
+from utils.rainfall_api import fetch_nasa_power, fetch_chirps, OUTBREAK_HIERARCHY
 
 # ── Page config ────────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -46,14 +46,19 @@ with st.sidebar:
     st.header("📁 Rainfall Input")
     rain_source = st.radio(
         "Rainfall source",
-        ["Upload CSV", "NASA POWER API"],
+        ["Upload CSV", "NASA POWER", "CHIRPS"],
         horizontal=True,
-        help="Upload your own data or fetch real satellite-based precipitation from NASA POWER.",
+        help=(
+            "Upload CSV: your own data.  "
+            "NASA POWER: ~50 km, instant.  "
+            "CHIRPS: ~5 km, async (~30–60 s)."
+        ),
     )
 
     sample_path = ROOT / "data" / "sample_rainfall.csv"
     rain_array: "np.ndarray | None" = None
 
+    # ── CSV branch ────────────────────────────────────────────────────────────
     if rain_source == "Upload CSV":
         if sample_path.exists():
             with open(sample_path, "rb") as f:
@@ -73,8 +78,10 @@ with st.sidebar:
             rain_array = pd.read_csv(sample_path)["rainfall_mm"].to_numpy(dtype=float)
             st.info("Using sample rainfall (365 days).")
 
-    else:  # NASA POWER API
-        region  = st.selectbox("Region", list(OUTBREAK_HIERARCHY.keys()))
+    # ── API branches (NASA POWER or CHIRPS) ───────────────────────────────────
+    else:
+        # Cascading location presets — shared by both APIs
+        region  = st.selectbox("Region",         list(OUTBREAK_HIERARCHY.keys()))
         country = st.selectbox("Country / Area", list(OUTBREAK_HIERARCHY[region].keys()))
         event   = st.selectbox("Outbreak event", list(OUTBREAK_HIERARCHY[region][country].keys()))
         preset  = OUTBREAK_HIERARCHY[region][country][event]
@@ -82,49 +89,66 @@ with st.sidebar:
         if preset.get("note"):
             st.caption(f"📌 {preset['note']}")
 
-        api_lat   = st.number_input("Latitude",  -90.0,  90.0, float(preset["lat"]), 0.001, format="%.3f")
-        api_lon   = st.number_input("Longitude", -180.0, 180.0, float(preset["lon"]), 0.001, format="%.3f")
+        api_lat   = st.number_input("Latitude",  -90.0,  90.0,   float(preset["lat"]), 0.001, format="%.3f")
+        api_lon   = st.number_input("Longitude", -180.0, 180.0,  float(preset["lon"]), 0.001, format="%.3f")
         api_start = st.date_input("Start date", value=preset["start"])
         api_end   = st.date_input("End date",   value=preset["end"])
 
-        fetch_btn = st.button("🌐 Fetch Rainfall Data", use_container_width=True)
+        # Source-specific config
+        if rain_source == "NASA POWER":
+            _src_key  = "nasa"
+            _fetch_fn = fetch_nasa_power
+            _label    = "🌐 Fetch NASA POWER Data"
+            _spinner  = "Fetching from NASA POWER (~5 s)…"
+            st.caption("Source: NASA POWER PRECTOTCORR · ~0.5° resolution · 1981–present")
+        else:  # CHIRPS
+            _src_key  = "chirps"
+            _fetch_fn = fetch_chirps
+            _label    = "🌐 Fetch CHIRPS Data"
+            _spinner  = "Fetching from ClimateSERV / CHIRPS — async job, may take 30–60 s…"
+            st.caption("Source: CHIRPS v2.0 · ~0.05° (~5 km) resolution · 1981–present")
 
-        if "api_rain" not in st.session_state:
-            st.session_state.api_rain  = None
-            st.session_state.api_meta  = None
+        _rain_key = f"{_src_key}_rain"
+        _meta_key = f"{_src_key}_meta"
+        if _rain_key not in st.session_state:
+            st.session_state[_rain_key] = None
+            st.session_state[_meta_key] = None
 
+        fetch_btn = st.button(_label, use_container_width=True)
         if fetch_btn:
             if api_end < api_start:
                 st.error("End date must be after start date.")
             else:
-                with st.spinner("Fetching from NASA POWER…"):
+                with st.spinner(_spinner):
                     try:
-                        arr, meta = fetch_nasa_power(api_lat, api_lon, api_start, api_end)
-                        st.session_state.api_rain = arr
-                        st.session_state.api_meta = meta
+                        arr, meta = _fetch_fn(api_lat, api_lon, api_start, api_end)
+                        st.session_state[_rain_key] = arr
+                        st.session_state[_meta_key] = meta
                         st.success(
                             f"Fetched {meta['n_days']} days · "
                             f"Total {meta['total_mm']:.1f} mm · "
                             f"Peak {meta['peak_mm']:.1f} mm (day {meta['peak_day']})"
                         )
                     except Exception as e:
-                        st.error(f"API fetch failed: {e}")
+                        st.error(f"Fetch failed: {e}")
 
-        if st.session_state.api_rain is not None:
-            rain_array = st.session_state.api_rain
-            meta = st.session_state.api_meta
-            # Quick sparkline preview
+        if st.session_state[_rain_key] is not None:
+            rain_array = st.session_state[_rain_key]
+            meta       = st.session_state[_meta_key]
             import plotly.graph_objects as _go
             _fig = _go.Figure()
             _fig.add_bar(
                 x=list(range(1, len(rain_array) + 1)),
                 y=rain_array.tolist(),
-                marker_color="#4C9BE8",
+                marker_color="#4C9BE8" if rain_source == "NASA POWER" else "#2E7D32",
                 name="mm/day",
             )
             _fig.update_layout(
                 height=160, margin=dict(l=0, r=0, t=24, b=0),
-                title_text=f"NASA POWER · {meta['location']}  ({meta['start']} → {meta['end']})",
+                title_text=(
+                    f"{meta['source']} · {meta['location']}  "
+                    f"({meta['start']} → {meta['end']})"
+                ),
                 title_font_size=11,
                 xaxis_title="Day", yaxis_title="mm",
                 showlegend=False,

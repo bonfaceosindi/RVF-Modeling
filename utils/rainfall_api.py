@@ -6,8 +6,9 @@ latitude/longitude and date range — no API key required.
 """
 
 from __future__ import annotations
+import json
 import numpy as np
-from datetime import date
+from datetime import date, datetime as _dt
 from typing import Any, Dict, Tuple
 
 try:
@@ -169,5 +170,118 @@ def fetch_nasa_power(
         "peak_mm":   float(rain.max()),
         "peak_day":  int(rain.argmax()) + 1,
         "source":    "NASA POWER (PRECTOTCORR)",
+    }
+    return rain, meta
+
+
+def fetch_chirps(
+    lat: float,
+    lon: float,
+    start: date,
+    end: date,
+    poll_interval: float = 3.0,
+    max_polls: int = 60,
+) -> Tuple[np.ndarray, Dict[str, Any]]:
+    """
+    Fetch daily CHIRPS v2.0 precipitation from the ClimateSERV API.
+
+    Resolution: ~0.05° (~5 km).  Coverage: 50°S–50°N, 1981–present.
+    No API key required; job is submitted asynchronously and polled.
+
+    Parameters
+    ----------
+    lat, lon : float
+    start, end : datetime.date
+    poll_interval : float
+        Seconds between progress polls (default 3).
+    max_polls : int
+        Maximum poll attempts before raising TimeoutError (default 60 → ~3 min).
+
+    Returns
+    -------
+    rain : np.ndarray, shape (n_days,)
+    meta : dict  — same keys as fetch_nasa_power, plus source="CHIRPS v2.0"
+    """
+    import time
+
+    if not _REQUESTS_OK:
+        raise RuntimeError(
+            "'requests' is not installed. Add it to requirements.txt and redeploy."
+        )
+    if end < start:
+        raise ValueError("end date must be >= start date.")
+
+    BASE = "https://climateserv.servirglobal.net/api"
+
+    # ── Submit async job ───────────────────────────────────────────────────────
+    resp = requests.post(
+        f"{BASE}/submitDataRequest/",
+        data={
+            "datatype":      0,
+            "begintime":     start.strftime("%m/%d/%Y"),
+            "endtime":       end.strftime("%m/%d/%Y"),
+            "intervaltype":  0,
+            "operationtype": 5,
+            "geometry":      json.dumps({"type": "Point", "coordinates": [lon, lat]}),
+        },
+        timeout=30,
+    )
+    resp.raise_for_status()
+    request_id = resp.json()[0]
+
+    # ── Poll until finished ────────────────────────────────────────────────────
+    for attempt in range(max_polls):
+        prog_resp = requests.get(
+            f"{BASE}/getDataRequestProgress/{request_id}/", timeout=20
+        )
+        prog_resp.raise_for_status()
+        prog = prog_resp.json()
+        if prog and (
+            float(prog[0].get("progress", 0)) >= 100
+            or str(prog[0].get("status", "")).lower() == "finished"
+        ):
+            break
+        time.sleep(poll_interval)
+    else:
+        raise TimeoutError(
+            f"ClimateSERV job {request_id} did not finish within "
+            f"{max_polls * poll_interval:.0f} s."
+        )
+
+    # ── Download result ────────────────────────────────────────────────────────
+    data_resp = requests.get(
+        f"{BASE}/getDataFromRequest/{request_id}/", timeout=40
+    )
+    data_resp.raise_for_status()
+    raw = data_resp.json()
+
+    # Response: [{"date": "MM/DD/YYYY", "value": [mm]}, ...]
+    n_days = (end - start).days + 1
+    rain = np.zeros(n_days)
+    for item in raw:
+        try:
+            d = _dt.strptime(item["date"], "%m/%d/%Y").date()
+            idx = (d - start).days
+            vals = item.get("value", [])
+            if 0 <= idx < n_days and vals:
+                v = float(vals[0])
+                rain[idx] = max(0.0, v) if v != -9999.0 else 0.0
+        except (KeyError, ValueError):
+            continue
+
+    lat_label = f"{abs(lat):.3f}°{'N' if lat >= 0 else 'S'}"
+    lon_label = f"{abs(lon):.3f}°{'E' if lon >= 0 else 'W'}"
+
+    meta: Dict[str, Any] = {
+        "lat":      lat,
+        "lon":      lon,
+        "location": f"{lat_label}, {lon_label}",
+        "start":    start.isoformat(),
+        "end":      end.isoformat(),
+        "n_days":   n_days,
+        "total_mm": float(rain.sum()),
+        "peak_mm":  float(rain.max()),
+        "peak_day": int(rain.argmax()) + 1,
+        "source":   "CHIRPS v2.0 (ClimateSERV)",
     }
     return rain, meta
