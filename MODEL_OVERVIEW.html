@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RVF Transmission Model — Overview</title>
+  <style>
+    :root {
+      --blue:    #1565C0;
+      --lblue:   #E3F2FD;
+      --green:   #2E7D32;
+      --lgreen:  #E8F5E9;
+      --orange:  #E65100;
+      --lorange: #FFF3E0;
+      --red:     #C62828;
+      --lred:    #FFEBEE;
+      --purple:  #6A1B9A;
+      --lpurple: #F3E5F5;
+      --teal:    #00695C;
+      --lteal:   #E0F2F1;
+      --grey:    #37474F;
+      --lgrey:   #ECEFF1;
+      --border:  #CFD8DC;
+      --text:    #263238;
+      --muted:   #607D8B;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #F5F7FA;
+      color: var(--text);
+      line-height: 1.65;
+      padding: 0 0 80px;
+    }
+
+    /* ── Hero ── */
+    .hero {
+      background: linear-gradient(135deg, #0D47A1 0%, #1565C0 50%, #283593 100%);
+      color: #fff;
+      padding: 52px 48px 44px;
+    }
+    .hero h1 { font-size: 2.1rem; font-weight: 700; letter-spacing: -0.5px; }
+    .hero .subtitle { margin-top: 8px; font-size: 1.05rem; opacity: 0.85; max-width: 720px; }
+    .hero .meta { margin-top: 18px; font-size: 0.82rem; opacity: 0.65; }
+
+    /* ── Layout ── */
+    .container { max-width: 1120px; margin: 0 auto; padding: 0 32px; }
+
+    /* ── Section ── */
+    section { margin-top: 52px; }
+    section h2 {
+      font-size: 1.35rem; font-weight: 700; color: var(--blue);
+      border-bottom: 3px solid var(--blue); padding-bottom: 8px; margin-bottom: 24px;
+    }
+    section h3 { font-size: 1.05rem; font-weight: 600; color: var(--grey); margin: 20px 0 10px; }
+
+    /* ── Cards ── */
+    .cards { display: grid; gap: 18px; }
+    .cards-3 { grid-template-columns: repeat(3, 1fr); }
+    .cards-2 { grid-template-columns: repeat(2, 1fr); }
+    @media (max-width: 768px) { .cards-3, .cards-2 { grid-template-columns: 1fr; } }
+
+    .card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 22px 24px;
+      border-top: 4px solid var(--blue);
+    }
+    .card.green  { border-top-color: var(--green); }
+    .card.orange { border-top-color: var(--orange); }
+    .card.purple { border-top-color: var(--purple); }
+    .card.teal   { border-top-color: var(--teal); }
+    .card.red    { border-top-color: var(--red); }
+
+    .card h4 { font-size: 0.92rem; font-weight: 700; text-transform: uppercase;
+               letter-spacing: 0.5px; margin-bottom: 10px; }
+    .card.blue   h4 { color: var(--blue); }
+    .card.green  h4 { color: var(--green); }
+    .card.orange h4 { color: var(--orange); }
+    .card.purple h4 { color: var(--purple); }
+    .card.teal   h4 { color: var(--teal); }
+    .card.red    h4 { color: var(--red); }
+
+    .card p  { font-size: 0.88rem; color: var(--muted); }
+    .card ul { font-size: 0.88rem; color: var(--muted); padding-left: 18px; }
+    .card ul li { margin-top: 5px; }
+
+    /* ── Architecture diagram ── */
+    .arch {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+      flex-wrap: wrap;
+    }
+    .arch-box {
+      border-radius: 10px;
+      padding: 16px 22px;
+      text-align: center;
+      min-width: 140px;
+    }
+    .arch-box .label { font-size: 0.75rem; text-transform: uppercase;
+                       letter-spacing: 0.6px; font-weight: 600; opacity: 0.7; }
+    .arch-box .name  { font-size: 1.1rem; font-weight: 700; margin-top: 4px; }
+    .arch-box .sub   { font-size: 0.78rem; margin-top: 4px; opacity: 0.75; }
+
+    .arch-box.rain   { background: var(--lblue);  color: var(--blue); }
+    .arch-box.host   { background: var(--lgreen); color: var(--green); }
+    .arch-box.vec    { background: var(--lorange);color: var(--orange); }
+    .arch-box.human  { background: var(--lpurple);color: var(--purple); }
+    .arch-box.obs    { background: var(--lteal);  color: var(--teal); }
+
+    .arch-arrow {
+      font-size: 1.6rem; color: var(--muted); padding: 0 8px; line-height: 1;
+    }
+
+    /* ── Equations ── */
+    .eq-block {
+      background: var(--lgrey);
+      border-left: 4px solid var(--blue);
+      border-radius: 0 8px 8px 0;
+      padding: 16px 20px;
+      font-family: "Courier New", monospace;
+      font-size: 0.88rem;
+      line-height: 1.9;
+      margin: 12px 0;
+    }
+
+    /* ── Feature table ── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      font-size: 0.87rem;
+    }
+    thead tr { background: var(--blue); color: #fff; }
+    th, td { padding: 11px 16px; text-align: left; vertical-align: top; }
+    tbody tr:nth-child(even) { background: #F8FAFC; }
+    tbody tr:hover { background: var(--lblue); }
+    td:first-child { font-weight: 600; }
+
+    /* ── Badges ── */
+    .badge {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+    }
+    .badge-done   { background: var(--lgreen);  color: var(--green); }
+    .badge-next   { background: var(--lorange); color: var(--orange); }
+    .badge-future { background: var(--lgrey);   color: var(--muted); }
+    .badge-high   { background: var(--lred);    color: var(--red); }
+
+    /* ── Callout ── */
+    .callout {
+      border-radius: 10px;
+      padding: 18px 22px;
+      font-size: 0.9rem;
+      margin: 20px 0;
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+    }
+    .callout-blue   { background: var(--lblue);  border-left: 4px solid var(--blue); }
+    .callout-green  { background: var(--lgreen); border-left: 4px solid var(--green); }
+    .callout-orange { background: var(--lorange);border-left: 4px solid var(--orange); }
+    .callout .icon  { font-size: 1.3rem; line-height: 1.4; flex-shrink: 0; }
+
+    /* ── Timeline ── */
+    .timeline { position: relative; padding-left: 32px; margin-top: 10px; }
+    .timeline::before {
+      content: ""; position: absolute; left: 10px; top: 0; bottom: 0;
+      width: 2px; background: var(--border);
+    }
+    .tl-item {
+      position: relative;
+      margin-bottom: 22px;
+      padding: 16px 20px;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+    .tl-item::before {
+      content: ""; position: absolute; left: -27px; top: 20px;
+      width: 12px; height: 12px; border-radius: 50%;
+      background: var(--blue); border: 2px solid #fff;
+      box-shadow: 0 0 0 2px var(--blue);
+    }
+    .tl-item.done::before  { background: var(--green); box-shadow: 0 0 0 2px var(--green); }
+    .tl-item.next::before  { background: var(--orange);box-shadow: 0 0 0 2px var(--orange); }
+
+    .tl-item .tl-title {
+      font-weight: 700; font-size: 0.95rem; margin-bottom: 6px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .tl-item .tl-body { font-size: 0.87rem; color: var(--muted); }
+    .tl-item ul { font-size: 0.87rem; color: var(--muted);
+                  padding-left: 18px; margin-top: 6px; }
+    .tl-item ul li { margin-top: 4px; }
+
+    /* ── Param table ── */
+    .param-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }
+    .param-item {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 0.85rem;
+    }
+    .param-item .sym  { font-family: monospace; font-weight: 700; color: var(--blue); }
+    .param-item .val  { color: var(--orange); font-size: 0.82rem; margin-left: 8px; }
+    .param-item .desc { color: var(--muted); margin-top: 3px; font-size: 0.82rem; }
+
+    /* ── Footer ── */
+    footer {
+      margin-top: 64px;
+      background: var(--grey);
+      color: rgba(255,255,255,0.7);
+      text-align: center;
+      padding: 24px;
+      font-size: 0.82rem;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- HERO -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<div class="hero">
+  <div class="container">
+    <h1>🦟 Rift Valley Fever Transmission Model</h1>
+    <p class="subtitle">
+      A hybrid individual-based / ODE coupled model for simulating RVF dynamics
+      between rainfall, mosquito vectors, livestock hosts, and human spillover —
+      with a Streamlit web interface for parameter exploration, ensemble
+      uncertainty quantification, and intervention planning.
+    </p>
+    <p class="meta">Washington State University · Graduate Research Project · Last updated May 2026</p>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- 1. WHAT IS THIS MODEL -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section>
+  <h2>1 · What Is This Model?</h2>
+
+  <p style="max-width:820px; font-size:0.95rem; margin-bottom:24px;">
+    Rift Valley Fever (RVF) is a rainfall-driven zoonotic disease caused by a phlebovirus
+    transmitted primarily by <em>Aedes</em> and <em>Culex</em> mosquitoes to livestock (cattle,
+    sheep, goats) and secondarily to humans through contact with infected animals or mosquito bites.
+    Outbreaks follow heavy rainfall events that trigger mass mosquito emergence.
+  </p>
+
+  <div class="callout callout-blue">
+    <span class="icon">🎯</span>
+    <div>
+      <strong>Core goal:</strong> Simulate how RVF spreads through a livestock population under
+      varying rainfall conditions, so researchers can predict outbreak timing, estimate the effect
+      of interventions (vaccination, vector control), and understand which parameters drive risk most.
+    </div>
+  </div>
+
+  <h3>Model Architecture</h3>
+  <div class="arch">
+    <div class="arch-box rain">
+      <div class="label">Driver</div>
+      <div class="name">☁️ Rainfall</div>
+      <div class="sub">Daily mm input<br>CSV upload</div>
+    </div>
+    <div class="arch-arrow">→</div>
+    <div class="arch-box vec">
+      <div class="label">Mosquito ODE</div>
+      <div class="name">🦟 Vectors</div>
+      <div class="sub">S<sub>v</sub> E<sub>v</sub> I<sub>v</sub><br>Rainfall-forced emergence</div>
+    </div>
+    <div class="arch-arrow">⇄</div>
+    <div class="arch-box host">
+      <div class="label">Livestock IBM</div>
+      <div class="name">🐄 Hosts</div>
+      <div class="sub">S E I R<br>Individual-based</div>
+    </div>
+    <div class="arch-arrow">→</div>
+    <div class="arch-box obs">
+      <div class="label">Observation</div>
+      <div class="name">📋 Reporting</div>
+      <div class="sub">NegBinom<br>ρ · new_inf</div>
+    </div>
+  </div>
+  <div style="margin-top:14px; display:flex; align-items:center; gap:24px; flex-wrap:wrap;">
+    <div style="display:flex; align-items:center; gap:8px;">
+      <div class="arch-box host" style="padding:8px 14px; min-width:auto;">
+        <div class="name" style="font-size:0.9rem;">🐄 Hosts</div>
+      </div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-box human" style="padding:8px 14px; min-width:auto;">
+        <div class="name" style="font-size:0.9rem;">👥 Humans</div>
+        <div class="sub">Spillover ODE</div>
+      </div>
+    </div>
+    <p style="font-size:0.82rem; color:var(--muted);">Human compartment receives infections from vectors (dead-end host — no human-to-vector transmission assumed).</p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- 2. MODEL EQUATIONS -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section>
+  <h2>2 · Model Equations</h2>
+
+  <div class="cards cards-3">
+    <div class="card orange">
+      <h4>🦟 Vector ODE</h4>
+      <div class="eq-block">
+dS<sub>v</sub>/dt = β(t)·D(t) − λ<sub>v</sub>·S<sub>v</sub> − μ·S<sub>v</sub>
+dE<sub>v</sub>/dt = λ<sub>v</sub>·S<sub>v</sub> − (σ+μ)·E<sub>v</sub>
+dI<sub>v</sub>/dt = σ·E<sub>v</sub> − μ·I<sub>v</sub>
+      </div>
+      <ul>
+        <li><b>β(t)</b> = α·r<sub>lag</sub>/(1+r<sub>lag</sub>) — rainfall-forced emergence</li>
+        <li><b>D(t)</b> = max(0, 1−N<sub>v</sub>/K(t)) — density factor</li>
+        <li><b>λ<sub>v</sub></b> = b·p<sub>hv</sub>·I<sub>h</sub>/N<sub>h</sub></li>
+        <li>Stepped daily via Euler integration</li>
+      </ul>
+    </div>
+
+    <div class="card green">
+      <h4>🐄 Host IBM (Daily Step)</h4>
+      <div class="eq-block">
+λ<sub>h</sub> = (b/N<sub>h</sub>) · p<sub>vh</sub> · I<sub>v</sub>
+
+P(S→E) = 1 − exp(−λ<sub>h</sub>)  [each animal]
+E→I after latent_days
+I→R after infectious_days
+      </div>
+      <ul>
+        <li>Each of N<sub>h</sub> animals tracked individually</li>
+        <li>Infection sampled stochastically per animal per day</li>
+        <li>Disease progression deterministic (fixed durations)</li>
+        <li>Stochasticity produces run-to-run variability</li>
+      </ul>
+    </div>
+
+    <div class="card purple">
+      <h4>👥 Human ODE (Spillover)</h4>
+      <div class="eq-block">
+dS<sub>h</sub>/dt = −λ<sub>human</sub>·S<sub>h</sub>
+dE<sub>h</sub>/dt = λ<sub>human</sub>·S<sub>h</sub> − E<sub>h</sub>/L<sub>h</sub>
+dI<sub>h</sub>/dt = E<sub>h</sub>/L<sub>h</sub> − I<sub>h</sub>/D<sub>h</sub>
+dR<sub>h</sub>/dt = I<sub>h</sub>/D<sub>h</sub>
+
+λ<sub>human</sub> = (b/N<sub>hum</sub>) · p<sub>vh,hum</sub> · I<sub>v</sub>
+      </div>
+      <ul>
+        <li>Continuous ODE (humans too numerous for IBM)</li>
+        <li>Receives infection from vectors only (dead-end host)</li>
+        <li>Separate reporting fraction ρ<sub>human</sub></li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>Observation Model</h3>
+  <div class="eq-block">
+obs_cases(t) ~ NegativeBinomial( mean = ρ · new_inf(t),  overdispersion = k )
+  </div>
+  <p style="font-size:0.88rem; color:var(--muted); margin-top:8px;">
+    The negative binomial captures both under-reporting (ρ &lt; 1) and extra variance
+    (k controls overdispersion; larger k → closer to Poisson).
+  </p>
+
+  <h3>R₀ Formula (Next-Generation Matrix)</h3>
+  <div class="eq-block">
+R₀ = b · √[ p<sub>vh</sub> · p<sub>hv</sub> · m · σ / ((σ+μ) · μ · γ<sub>h</sub>) ]
+
+where  m = S<sub>v0</sub>/N<sub>h</sub>  (vector-to-host ratio at DFE)
+       γ<sub>h</sub> = 1/infectious_days
+       R₀_hv = b·p<sub>hv</sub>·m·σ / (γ<sub>h</sub>·(σ+μ))   [host→vector contribution]
+       R₀_vh = b·p<sub>vh</sub> / μ                            [vector→host contribution]
+       R₀   = √(R₀_hv · R₀_vh)
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- 3. PARAMETERS -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section>
+  <h2>3 · Model Parameters</h2>
+  <p style="font-size:0.88rem; color:var(--muted); margin-bottom:16px;">
+    All parameters are configurable via the web app sidebar. Values below are current defaults
+    (placeholders — to be replaced with calibrated values from field data).
+  </p>
+
+  <h3>Host (Livestock)</h3>
+  <div class="param-grid">
+    <div class="param-item"><span class="sym">latent_days</span><span class="val">= 3 days</span><div class="desc">Duration in E before becoming infectious (E→I)</div></div>
+    <div class="param-item"><span class="sym">infectious_days</span><span class="val">= 5 days</span><div class="desc">Duration in I before recovering (I→R)</div></div>
+    <div class="param-item"><span class="sym">p_vh</span><span class="val">= 0.20</span><div class="desc">Probability of transmission per bite (vector→host)</div></div>
+    <div class="param-item"><span class="sym">n_hosts</span><span class="val">= 1 000</span><div class="desc">Size of the individual-based livestock population</div></div>
+  </div>
+
+  <h3>Vector (Mosquito)</h3>
+  <div class="param-grid">
+    <div class="param-item"><span class="sym">μ (mu)</span><span class="val">= 0.10 /day</span><div class="desc">Adult mosquito daily mortality rate</div></div>
+    <div class="param-item"><span class="sym">σ (sigma)</span><span class="val">= 0.20 /day</span><div class="desc">Exposed→Infectious progression rate (1/EIP)</div></div>
+    <div class="param-item"><span class="sym">b</span><span class="val">= 0.30 /day</span><div class="desc">Bites per mosquito per day</div></div>
+    <div class="param-item"><span class="sym">p_hv</span><span class="val">= 0.15</span><div class="desc">Probability of transmission per bite (host→vector)</div></div>
+    <div class="param-item"><span class="sym">α (alpha)</span><span class="val">= 50</span><div class="desc">Emergence scaling factor (rain → new adults)</div></div>
+    <div class="param-item"><span class="sym">rain_lag</span><span class="val">= 14 days</span><div class="desc">Lag between rainfall event and adult emergence</div></div>
+    <div class="param-item"><span class="sym">K₀</span><span class="val">= 10 000</span><div class="desc">Baseline vector carrying capacity</div></div>
+    <div class="param-item"><span class="sym">K_rain</span><span class="val">= 50</span><div class="desc">Rainfall-dependent increase in carrying capacity</div></div>
+  </div>
+
+  <h3>Human Spillover (optional)</h3>
+  <div class="param-grid">
+    <div class="param-item"><span class="sym">n_humans</span><span class="val">= 10 000</span><div class="desc">Human population at risk</div></div>
+    <div class="param-item"><span class="sym">p_vh_human</span><span class="val">= 0.10</span><div class="desc">Vector→human transmission probability per bite</div></div>
+    <div class="param-item"><span class="sym">latent_days (hum)</span><span class="val">= 3 days</span><div class="desc">Human incubation period</div></div>
+    <div class="param-item"><span class="sym">infectious_days (hum)</span><span class="val">= 6 days</span><div class="desc">Human infectious period</div></div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- 4. CURRENT FEATURES -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section>
+  <h2>4 · What Is Built So Far</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Feature</th>
+        <th>Status</th>
+        <th>Where</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Livestock IBM</td>
+        <td><span class="badge badge-done">✔ Done</span></td>
+        <td><code>model/rvf_hybrid.py</code></td>
+        <td>Each animal tracked individually through S→E→I→R. Stochastic infection sampling each day.</td>
+      </tr>
+      <tr>
+        <td>Rainfall-forced vector ODE</td>
+        <td><span class="badge badge-done">✔ Done</span></td>
+        <td><code>model/rvf_hybrid.py</code></td>
+        <td>Daily Euler integration of Sv/Ev/Iv with lagged, smoothed rainfall driving mosquito emergence. Density-dependent carrying capacity.</td>
+      </tr>
+      <tr>
+        <td>Host–vector coupling</td>
+        <td><span class="badge badge-done">✔ Done</span></td>
+        <td><code>model/rvf_hybrid.py</code></td>
+        <td>Daily bidirectional force of infection: infectious vectors → livestock and infectious livestock → vectors.</td>
+      </tr>
+      <tr>
+        <td>Syndromic observation model</td>
+        <td><span class="badge badge-done">✔ Done</span></td>
+        <td><code>model/rvf_hybrid.py</code></td>
+        <td>Negative-binomial sampling of reported cases with configurable reporting fraction ρ and overdispersion k.</td>
+      </tr>
+      <tr>
+        <td>Human spillover compartment</td>
+        <td><span class="badge badge-done">✔ Done</span></td>
+        <td><code>model/rvf_hybrid.py</code></td>
+        <td>ODE-based SEIR for humans. Infected by vectors only (dead-end host). Separate reporting fraction.</td>
+      </tr>
+      <tr>
+        <td>Ensemble / multi-run</td>
+        <td><span class="badge badge-done">✔ Done</span></td>
+        <td><code>run_ensemble()</code></td>
+        <td>Runs the stochastic model N times with sequential seeds. Returns 2-D arrays (runs × time). App shows median ± 90% CI bands.</td>
+      </tr>
+      <tr>
+        <td>Interventions</td>
+        <td><span class="badge badge-done">✔ Done</span></td>
+        <td><code>InterventionParams</code></td>
+        <td>Vaccination (mass campaign, configurable day/coverage/efficacy), vector control (increases mosquito mortality μ), movement restriction (reduces biting rate b). Comparison tab overlays baseline vs intervention.</td>
+      </tr>
+      <tr>
+        <td>R₀ calculator</td>
+        <td><span class="badge badge-done">✔ Done</span></td>
+        <td><code>compute_r0()</code></td>
+        <td>Next-Generation Matrix formula. Returns R₀, R₀_hv, R₀_vh. App displays gauge dial + component bar.</td>
+      </tr>
+      <tr>
+        <td>Sensitivity analysis (PRCC)</td>
+        <td><span class="badge badge-done">✔ Done</span></td>
+        <td><code>run_sensitivity()</code></td>
+        <td>Latin Hypercube Sampling across 8 parameters + Partial Rank Correlation Coefficients. Tornado chart shows which parameters drive total infections most.</td>
+      </tr>
+      <tr>
+        <td>Observed data overlay</td>
+        <td><span class="badge badge-done">✔ Done</span></td>
+        <td>App Tab 9</td>
+        <td>Upload a day/cases CSV to compare against model-predicted reported cases. Supports ensemble bands.</td>
+      </tr>
+      <tr>
+        <td>CSV rainfall input</td>
+        <td><span class="badge badge-done">✔ Done</span></td>
+        <td>App sidebar</td>
+        <td>Upload any day,rainfall_mm CSV. Sample 365-day synthetic rainfall included. Two-column or single-column accepted.</td>
+      </tr>
+      <tr>
+        <td>Results export</td>
+        <td><span class="badge badge-done">✔ Done</span></td>
+        <td>App Tab 9</td>
+        <td>Download full results as CSV (all compartments, ensemble percentiles, human data if enabled).</td>
+      </tr>
+      <tr>
+        <td>Streamlit web app</td>
+        <td><span class="badge badge-done">✔ Done</span></td>
+        <td><code>app.py</code></td>
+        <td>9-tab interface: Overview, Host, Vectors, Transmission, Humans, Interventions, R₀+Sensitivity, Rainfall, Data & Export. 6 KPI cards. Deployable to Streamlit Cloud.</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- 5. APP STRUCTURE -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section>
+  <h2>5 · App Structure &amp; Output Tabs</h2>
+
+  <div class="cards cards-3">
+    <div class="card blue">
+      <h4>📊 Tab 1 — Overview</h4>
+      <ul>
+        <li>3-panel time-aligned chart: rainfall / SEIR / vectors</li>
+        <li>Switches to ensemble median + 90% CI when n_runs &gt; 1</li>
+        <li>Shared x-axis for direct temporal comparison</li>
+      </ul>
+    </div>
+    <div class="card green">
+      <h4>🐄 Tab 2 — Host Dynamics</h4>
+      <ul>
+        <li>SEIR stacked-area chart</li>
+        <li>Daily new infections bar chart</li>
+        <li>Cumulative infections + running attack rate</li>
+        <li>Ensemble incidence fan when available</li>
+      </ul>
+    </div>
+    <div class="card orange">
+      <h4>🦟 Tab 3 — Vector Dynamics</h4>
+      <ul>
+        <li>Sv / Ev / Iv compartment curves</li>
+        <li>Total mosquito population over time</li>
+        <li>Infectious fraction (%) time series</li>
+      </ul>
+    </div>
+    <div class="card teal">
+      <h4>🔗 Tab 4 — Transmission</h4>
+      <ul>
+        <li>True infections vs reported cases (bar + line)</li>
+        <li>Force of infection proxy over time</li>
+        <li>Phase portrait: I<sub>h</sub> vs S<sub>h</sub> (time-coloured trajectory)</li>
+      </ul>
+    </div>
+    <div class="card purple">
+      <h4>👥 Tab 5 — Human Spillover</h4>
+      <ul>
+        <li>Human SEIR stacked area</li>
+        <li>Daily human infections + reported cases</li>
+        <li>Cumulative human infections + attack rate</li>
+        <li>Shown only when human spillover enabled</li>
+      </ul>
+    </div>
+    <div class="card red">
+      <h4>💉 Tab 6 — Interventions</h4>
+      <ul>
+        <li>Auto-runs no-intervention baseline</li>
+        <li>Overlay: new inf., I<sub>h</sub>, I<sub>v</sub>, cumulative</li>
+        <li>Reduction % annotation on cumulative panel</li>
+      </ul>
+    </div>
+    <div class="card blue">
+      <h4>🎯 Tab 7 — R₀ &amp; Sensitivity</h4>
+      <ul>
+        <li>R₀ gauge dial (green/amber/red zones)</li>
+        <li>Component breakdown: R₀_hv and R₀_vh</li>
+        <li>PRCC tornado chart (on demand)</li>
+        <li>Significance table with p-values</li>
+      </ul>
+    </div>
+    <div class="card green">
+      <h4>🌧️ Tab 8 — Rainfall Analysis</h4>
+      <ul>
+        <li>Raw vs smoothed rainfall comparison</li>
+        <li>Lagged rainfall series used for emergence</li>
+        <li>Scatter: rainfall vs daily vector emergence</li>
+      </ul>
+    </div>
+    <div class="card teal">
+      <h4>📥 Tab 9 — Data &amp; Export</h4>
+      <ul>
+        <li>Upload observed case data for overlay</li>
+        <li>Full results table (all compartments)</li>
+        <li>Download CSV (includes ensemble percentiles)</li>
+        <li>Parameter summary table</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- 6. WHAT IS NEXT -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section>
+  <h2>6 · What Comes Next</h2>
+
+  <div class="callout callout-orange">
+    <span class="icon">⚡</span>
+    <div>
+      Items are ordered by <strong>research impact</strong>. The first three transform the tool
+      from a demonstration into something publishable. The remainder add polish and advanced
+      capability.
+    </div>
+  </div>
+
+  <div class="timeline">
+
+    <div class="tl-item next">
+      <div class="tl-title">
+        <span>1 · Scenario Comparison (Save &amp; Compare Runs)</span>
+        <span class="badge badge-high">High impact</span>
+      </div>
+      <div class="tl-body">
+        Currently each click of Run replaces the previous result. Adding named scenario slots
+        lets you save "Baseline", "High rainfall", "Vaccine at day 30" as separate runs and
+        overlay them on the same chart.
+      </div>
+      <ul>
+        <li>Add a "Save this run as…" button with a text label input</li>
+        <li>Store up to 4 saved runs in <code>st.session_state.saved_scenarios</code></li>
+        <li>New "Compare Scenarios" tab overlays all saved runs on incidence, vectors, and cumulative panels</li>
+        <li>Useful for: comparing interventions, comparing rainy seasons, parameter sweeps</li>
+      </ul>
+    </div>
+
+    <div class="tl-item next">
+      <div class="tl-title">
+        <span>2 · Real Rainfall Data Pull (CHIRPS / NASA POWER API)</span>
+        <span class="badge badge-high">High impact</span>
+      </div>
+      <div class="tl-body">
+        Instead of uploading a CSV, enter a GPS bounding box and date range and automatically
+        pull real historical daily rainfall from a remote-sensing product.
+      </div>
+      <ul>
+        <li>Integrate <strong>CHIRPS</strong> (Climate Hazards Group InfraRed Precipitation) API — 0.05° resolution, daily, 1981–present</li>
+        <li>Or <strong>NASA POWER</strong> (free REST API, no key required) for point-location data</li>
+        <li>Add a "Fetch rainfall" form: latitude, longitude, start date, end date</li>
+        <li>Immediately enables running the model against real RVF outbreak years (2006–07 East Africa, 2010 South Africa, etc.)</li>
+      </ul>
+    </div>
+
+    <div class="tl-item next">
+      <div class="tl-title">
+        <span>3 · Parameter Calibration (Fitting to Observed Data)</span>
+        <span class="badge badge-high">High impact</span>
+      </div>
+      <div class="tl-body">
+        Right now all parameters are set by hand. For the model to be scientifically credible
+        it needs to be fitted to at least one real outbreak dataset.
+      </div>
+      <ul>
+        <li>Use <strong>scipy.optimize.minimize</strong> (SLSQP / Nelder-Mead) to minimise negative log-likelihood between <code>obs_cases</code> and uploaded observed data</li>
+        <li>Or implement a basic <strong>ABC (Approximate Bayesian Computation)</strong> rejection sampler for posterior distributions over key parameters</li>
+        <li>Output: best-fit parameter values, confidence intervals, goodness-of-fit metrics (AIC, correlation, RMSE)</li>
+        <li>New "Calibration" tab in the app</li>
+      </ul>
+    </div>
+
+    <div class="tl-item">
+      <div class="tl-title">
+        <span>4 · PDF / HTML Report Export</span>
+        <span class="badge badge-next">Medium</span>
+      </div>
+      <div class="tl-body">
+        Generate a self-contained report after each run that includes all charts, the parameter
+        table, KPI summary, and R₀ value — suitable for sharing with collaborators or supervisors.
+      </div>
+      <ul>
+        <li>Use Plotly's <code>.to_html(full_html=False, include_plotlyjs="cdn")</code> to embed interactive charts</li>
+        <li>Assemble a single HTML file with the report (no PDF library needed — browsers can print-to-PDF)</li>
+        <li>Add "⬇ Download Report" button in Tab 9</li>
+      </ul>
+    </div>
+
+    <div class="tl-item">
+      <div class="tl-title">
+        <span>5 · Multi-Species Livestock</span>
+        <span class="badge badge-next">Medium</span>
+      </div>
+      <div class="tl-body">
+        RVF affects cattle, sheep, and goats differently — sheep have much higher case fatality
+        rates. The current model treats all hosts as identical.
+      </div>
+      <ul>
+        <li>Add a <code>species</code> field to the <code>Host</code> dataclass</li>
+        <li>Add a <code>SpeciesParams</code> config with per-species latent days, infectious days, p_vh, and mortality rate</li>
+        <li>Sidebar: sliders for fraction of cattle / sheep / goats in the herd</li>
+        <li>New output: species-disaggregated incidence curves</li>
+      </ul>
+    </div>
+
+    <div class="tl-item">
+      <div class="tl-title">
+        <span>6 · Early Warning Score</span>
+        <span class="badge badge-next">Medium</span>
+      </div>
+      <div class="tl-body">
+        Automatically flag days when conditions are favourable for outbreak initiation —
+        useful for alerting systems and operational decision-making.
+      </div>
+      <ul>
+        <li>Compute a daily "risk score" = weighted combination of lagged rainfall, vector population, and R₀ estimate</li>
+        <li>Add threshold lines + colour-coded risk zones (green / amber / red) to the Overview chart</li>
+        <li>Optional SMS/email alert stub for deployment scenarios</li>
+      </ul>
+    </div>
+
+    <div class="tl-item">
+      <div class="tl-title">
+        <span>7 · Spatial Extension (Multi-Patch)</span>
+        <span class="badge badge-future">Advanced</span>
+      </div>
+      <div class="tl-body">
+        Add a spatial layer of connected patches (farms, districts) with livestock movement
+        between them — RVF can spread along livestock trade routes.
+      </div>
+      <ul>
+        <li>Each patch has its own SEIR-IBM + vector ODE + rainfall time series</li>
+        <li>Movement matrix (n_patches × n_patches) controls daily animal movement rates</li>
+        <li>Output: animated maps of infection spread</li>
+        <li>Requires significant refactoring of the simulation loop</li>
+      </ul>
+    </div>
+
+    <div class="tl-item">
+      <div class="tl-title">
+        <span>8 · Age &amp; Pregnancy Structure</span>
+        <span class="badge badge-future">Advanced</span>
+      </div>
+      <div class="tl-body">
+        Pregnant animals have much higher mortality and abortion rates from RVF.
+        The current model ignores age and reproductive state.
+      </div>
+      <ul>
+        <li>Add <code>age</code> and <code>pregnant</code> fields to the <code>Host</code> dataclass</li>
+        <li>Modify infection outcomes: pregnant animals have higher p(death) and p(abortion)</li>
+        <li>Track abortion events as an additional output (key surveillance signal)</li>
+      </ul>
+    </div>
+
+    <div class="tl-item">
+      <div class="tl-title">
+        <span>9 · Online Deployment (Streamlit Cloud)</span>
+        <span class="badge badge-next">Ready now</span>
+      </div>
+      <div class="tl-body">
+        The app is already structured for deployment. Only a GitHub push + Streamlit Cloud
+        connection is needed.
+      </div>
+      <ul>
+        <li>Push repo to GitHub (public or private)</li>
+        <li>Connect at <strong>share.streamlit.io</strong> — free tier, permanent URL</li>
+        <li>Add <code>.streamlit/config.toml</code> for custom theme if desired</li>
+        <li>Share URL with collaborators, supervisors, and funders</li>
+      </ul>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- 7. QUICK PRIORITY TABLE -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section>
+  <h2>7 · Priority Roadmap</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Feature</th>
+        <th>Effort</th>
+        <th>Impact</th>
+        <th>Needed for publication?</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td>Scenario comparison</td>
+        <td>Low (1 day)</td>
+        <td>High</td>
+        <td>Highly recommended</td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>Real rainfall API (CHIRPS)</td>
+        <td>Low–Medium (2 days)</td>
+        <td>Very high</td>
+        <td>Yes — needed for validation</td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td>Parameter calibration</td>
+        <td>Medium (3–5 days)</td>
+        <td>Very high</td>
+        <td>Yes — core scientific contribution</td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td>HTML report export</td>
+        <td>Low (0.5 days)</td>
+        <td>Medium</td>
+        <td>Useful for sharing</td>
+      </tr>
+      <tr>
+        <td>5</td>
+        <td>Multi-species livestock</td>
+        <td>Medium (2 days)</td>
+        <td>High (for RVF specifically)</td>
+        <td>Recommended (sheep vs cattle)</td>
+      </tr>
+      <tr>
+        <td>6</td>
+        <td>Early warning score</td>
+        <td>Low (1 day)</td>
+        <td>High (applied/operational)</td>
+        <td>Optional</td>
+      </tr>
+      <tr>
+        <td>7</td>
+        <td>Online deployment</td>
+        <td>Very low (1 hour)</td>
+        <td>High (visibility)</td>
+        <td>Optional but valuable</td>
+      </tr>
+      <tr>
+        <td>8</td>
+        <td>Spatial / multi-patch</td>
+        <td>High (1–2 weeks)</td>
+        <td>Very high</td>
+        <td>Future paper</td>
+      </tr>
+      <tr>
+        <td>9</td>
+        <td>Age &amp; pregnancy structure</td>
+        <td>Medium (3 days)</td>
+        <td>High (veterinary)</td>
+        <td>Recommended for livestock paper</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- 8. FILES -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section>
+  <h2>8 · Project File Structure</h2>
+  <div class="eq-block" style="line-height:2.0;">
+RVF Modeling/
+├── app.py                      ← Streamlit entry point (9 tabs, full UI)
+├── model/
+│   ├── __init__.py             ← Exports all public API
+│   └── rvf_hybrid.py           ← Core simulation engine
+│       ├── HostParams          ← Livestock disease parameters
+│       ├── VectorParams        ← Mosquito ODE parameters
+│       ├── ObsParams           ← Reporting model parameters
+│       ├── SimParams           ← Simulation configuration
+│       ├── HumanParams         ← Human spillover parameters
+│       ├── InterventionParams  ← Vaccination / vector control
+│       ├── simulate()          ← Single run driver
+│       ├── run_ensemble()      ← Multi-run uncertainty wrapper
+│       ├── compute_r0()        ← NGM-based R₀ calculator
+│       └── run_sensitivity()   ← LHS + PRCC sensitivity analysis
+├── utils/
+│   ├── __init__.py
+│   └── plotting.py             ← 13 Plotly figure functions
+│       ├── Single-run plots    (overview, host, vector, transmission, rainfall)
+│       ├── Ensemble plots      (ensemble_overview, ensemble_incidence)
+│       ├── Human plots         (human_dynamics)
+│       ├── Comparison plots    (intervention_comparison)
+│       └── Analysis plots      (r0_gauge, sensitivity, observed_overlay)
+├── notebooks/
+│   ├── rvf.ipynb               ← Development notebook
+│   └── rvf_v1.ipynb            ← Earlier version
+├── data/
+│   └── sample_rainfall.csv     ← 365-day synthetic rainfall (2 rainy seasons)
+├── requirements.txt            ← streamlit, plotly, numpy, scipy, pandas
+└── .gitignore
+  </div>
+</section>
+
+</div><!-- /container -->
+
+<footer>
+  RVF Transmission Model · Washington State University · Generated May 2026
+</footer>
+
+</body>
+</html>
