@@ -18,43 +18,76 @@ except ImportError:
 
 _POWER_URL = "https://power.larc.nasa.gov/api/temporal/daily/point"
 
-# ── Known RVF outbreak locations ───────────────────────────────────────────────
-OUTBREAK_PRESETS: Dict[str, Dict[str, Any]] = {
-    "East Africa 2006–07  (Kenya / Tanzania)": {
-        "lat": -1.286, "lon": 36.820,
-        "start": date(2006, 10, 1), "end": date(2007, 3, 31),
-        "note": "Largest recorded outbreak: ~150 000 cases, ~60 000 deaths (livestock).",
+# ── Known RVF outbreak locations — 3-level hierarchy ──────────────────────────
+# Structure: Region → Country/Area → Event label → preset dict
+OUTBREAK_HIERARCHY: Dict[str, Dict[str, Dict[str, Any]]] = {
+    "East Africa": {
+        "Kenya / Tanzania": {
+            "2006–07  ·  Nairobi region": {
+                "lat": -1.286, "lon": 36.820,
+                "start": date(2006, 10, 1), "end": date(2007, 3, 31),
+                "note": "Largest recorded outbreak: ~150 000 cases, ~60 000 livestock deaths.",
+            },
+        },
+        "Uganda": {
+            "2016  ·  Kabale district": {
+                "lat": -1.25, "lon": 29.99,
+                "start": date(2016, 5, 1), "end": date(2016, 10, 31),
+                "note": "First confirmed RVF outbreak in livestock and humans in Uganda.",
+            },
+        },
+        "Sudan": {
+            "2007–08  ·  White Nile State": {
+                "lat": 12.86, "lon": 30.22,
+                "start": date(2007, 10, 1), "end": date(2008, 2, 29),
+                "note": "Flood-associated outbreak along White Nile and Nile State.",
+            },
+        },
     },
-    "South Africa 2010  (Free State)": {
-        "lat": -29.1, "lon": 26.2,
-        "start": date(2010, 1, 1), "end": date(2010, 4, 30),
-        "note": "Post-flood outbreak in Northern Cape and Free State provinces.",
+    "Southern Africa": {
+        "South Africa": {
+            "2010  ·  Free State province": {
+                "lat": -29.1, "lon": 26.2,
+                "start": date(2010, 1, 1), "end": date(2010, 4, 30),
+                "note": "Post-flood outbreak in Northern Cape and Free State provinces.",
+            },
+        },
     },
-    "Yemen / Saudi Arabia 2000": {
-        "lat": 15.55, "lon": 44.01,
-        "start": date(2000, 8, 1), "end": date(2000, 12, 31),
-        "note": "First major outbreak outside Africa; ~2 000 human cases.",
+    "West Africa": {
+        "Mauritania": {
+            "2012  ·  Sahel / Senegal River": {
+                "lat": 17.0, "lon": -13.0,
+                "start": date(2012, 8, 1), "end": date(2012, 12, 31),
+                "note": "Endemic region; recurrent outbreaks following Sahel rains.",
+            },
+        },
     },
-    "Mauritania 2012  (West Africa)": {
-        "lat": 17.0, "lon": -13.0,
-        "start": date(2012, 8, 1), "end": date(2012, 12, 31),
-        "note": "Endemic region; recurrent outbreaks following Sahel rains.",
+    "Middle East": {
+        "Yemen / Saudi Arabia": {
+            "2000  ·  Hadramawt / Jizan": {
+                "lat": 15.55, "lon": 44.01,
+                "start": date(2000, 8, 1), "end": date(2000, 12, 31),
+                "note": "First major RVF outbreak outside Africa; ~2 000 human cases.",
+            },
+        },
     },
-    "Sudan 2007–08  (White Nile)": {
-        "lat": 12.86, "lon": 30.22,
-        "start": date(2007, 10, 1), "end": date(2008, 2, 29),
-        "note": "White Nile and Nile State flood-associated outbreak.",
+    "Custom": {
+        "— enter manually —": {
+            "Custom coordinates": {
+                "lat": 0.0, "lon": 38.0,
+                "start": date(2006, 1, 1), "end": date(2006, 12, 31),
+                "note": "Enter your own coordinates and date range below.",
+            },
+        },
     },
-    "Uganda 2016  (Kabale)": {
-        "lat": -1.25, "lon": 29.99,
-        "start": date(2016, 5, 1), "end": date(2016, 10, 31),
-        "note": "First confirmed Uganda outbreak in livestock and humans.",
-    },
-    "Custom location": {
-        "lat": 0.0, "lon": 38.0,
-        "start": date(2006, 1, 1), "end": date(2006, 12, 31),
-        "note": "Enter your own coordinates and date range.",
-    },
+}
+
+# Flat alias kept for any external code that referenced the old structure
+OUTBREAK_PRESETS: Dict[str, Any] = {
+    f"{country}  —  {event}": data
+    for region, countries in OUTBREAK_HIERARCHY.items()
+    for country, events in countries.items()
+    for event, data in events.items()
 }
 
 

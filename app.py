@@ -24,7 +24,7 @@ from utils.plotting import (
     plot_human_dynamics, plot_intervention_comparison,
     plot_r0_gauge, plot_sensitivity, plot_observed_overlay,
 )
-from utils.rainfall_api import fetch_nasa_power, OUTBREAK_PRESETS
+from utils.rainfall_api import fetch_nasa_power, OUTBREAK_HIERARCHY
 
 # ── Page config ────────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -74,17 +74,18 @@ with st.sidebar:
             st.info("Using sample rainfall (365 days).")
 
     else:  # NASA POWER API
-        preset_names = list(OUTBREAK_PRESETS.keys())
-        chosen_preset = st.selectbox("Known outbreak location", preset_names)
-        preset = OUTBREAK_PRESETS[chosen_preset]
+        region  = st.selectbox("Region", list(OUTBREAK_HIERARCHY.keys()))
+        country = st.selectbox("Country / Area", list(OUTBREAK_HIERARCHY[region].keys()))
+        event   = st.selectbox("Outbreak event", list(OUTBREAK_HIERARCHY[region][country].keys()))
+        preset  = OUTBREAK_HIERARCHY[region][country][event]
+
+        if preset.get("note"):
+            st.caption(f"📌 {preset['note']}")
 
         api_lat   = st.number_input("Latitude",  -90.0,  90.0, float(preset["lat"]), 0.001, format="%.3f")
         api_lon   = st.number_input("Longitude", -180.0, 180.0, float(preset["lon"]), 0.001, format="%.3f")
         api_start = st.date_input("Start date", value=preset["start"])
         api_end   = st.date_input("End date",   value=preset["end"])
-
-        if preset.get("note"):
-            st.caption(f"📌 {preset['note']}")
 
         fetch_btn = st.button("🌐 Fetch Rainfall Data", use_container_width=True)
 
